@@ -1,8 +1,8 @@
 require 'serverspec'
 
 # `example` method monkey path
-unless Specinfra::VERSION == '0.0.17'
-  raise "Unexpected Specinfra version #{Specinfra::VERSION}"
+unless SpecInfra::VERSION == '0.8.0'
+  raise "Unexpected Specinfra version #{SpecInfra::VERSION}"
 end
 
 RSpec.configure do |c|

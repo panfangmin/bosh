@@ -4,7 +4,7 @@ require 'serverspec'
 require 'serverspec/helper/backend'
 require 'pathname'
 
-unless Serverspec::VERSION == '0.13.7'
+unless Serverspec::VERSION == '0.15.4'
   raise "Unexpected Serverspec version #{Serverspec::VERSION}"
 end
 
