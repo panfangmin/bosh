@@ -11,7 +11,7 @@ rvm:
   - ruby-1.9.3
 
 env:
-  - TASKS="travis:install_go spec:unit"
+  - TASKS="travis:install_go spec:unit:go_agent"
 
   - DB=mysql    TASKS="spec:integration:ruby_agent"
   - DB=postgres TASKS="spec:integration:ruby_agent"
