@@ -27,9 +27,6 @@ then
 elif [ -f $centos_file ]
 then
   OS_TYPE='centos'
-else
-  echo "Unknown OS, exiting"
-  exit 2
 fi
 
 persist_value OS_TYPE

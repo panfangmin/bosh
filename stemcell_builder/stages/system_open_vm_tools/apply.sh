@@ -12,4 +12,3 @@ else
   echo "No installation strategy for open-vm-tools, exiting..."
   exit 2
 fi
-
