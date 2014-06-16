@@ -17,17 +17,32 @@ then
   source $chroot/etc/lsb-release
 fi
 
-function pkg_mgr {
-  centos_file=$chroot/etc/centos-release
-  ubuntu_file=$chroot/etc/debian_version
+centos_file=$chroot/etc/centos-release
+ubuntu_file=$chroot/etc/debian_version
 
-  if [ -f $ubuntu_file ]
+OS_TYPE=''
+if [ -f $ubuntu_file ]
+then
+  OS_TYPE='ubuntu'
+elif [ -f $centos_file ]
+then
+  OS_TYPE='centos'
+else
+  echo "Unknown OS, exiting"
+  exit 2
+fi
+
+persist_value OS_TYPE
+
+function pkg_mgr {
+
+  if [ $OS_TYPE -eq 'ubuntu' ]
   then
     echo "Found $ubuntu_file - Assuming Ubuntu"
     run_in_chroot $chroot "apt-get update"
     run_in_chroot $chroot "apt-get -f -y --force-yes --no-install-recommends $*"
     run_in_chroot $chroot "apt-get clean"
-  elif [ -f $centos_file ]
+  elif [ $OS_TYPE -eq 'centos' ]
   then
     echo "Found $centos_file - Assuming CentOS"
     run_in_chroot $chroot "yum update --assumeyes"
