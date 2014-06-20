@@ -21,10 +21,10 @@ function os_type {
   CENTOS_FILE=$chroot/etc/centos-release
   UBUNTU_FILE=$chroot/etc/debian_version
 
-  if [ -f $ubuntu_file ]
+  if [ -f $UBUNTU_FILE ]
   then
     echo ubuntu
-  elif [ -f $centos_file ]
+  elif [ -f $CENTOS_FILE ]
   then
     echo centos
   fi
@@ -34,13 +34,11 @@ function pkg_mgr {
   os_type=`os_type`
   if [ $os_type = 'ubuntu' ]
   then
-    echo "Found $ubuntu_file - Assuming Ubuntu"
     run_in_chroot $chroot "apt-get update"
     run_in_chroot $chroot "apt-get -f -y --force-yes --no-install-recommends $*"
     run_in_chroot $chroot "apt-get clean"
   elif [ $os_type -eq 'centos' ]
   then
-    echo "Found $centos_file - Assuming CentOS"
     run_in_chroot $chroot "yum update --assumeyes"
     run_in_chroot $chroot "yum --verbose --assumeyes $*"
     run_in_chroot $chroot "yum clean all"
