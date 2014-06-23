@@ -2,16 +2,16 @@ require 'spec_helper'
 
 describe 'Ubuntu 14.04 stemcell', stemcell_image: true do
   context 'installed by image_install_grub', exclude_on_warden: true do
-    describe file('/boot/grub/grub.conf') do
+    describe file('/boot/grub/grub.cfg') do
       it { should be_file }
-      it { should contain 'default=0' }
-      it { should contain 'timeout=1' }
-      it { should contain 'title Ubuntu 14.04 LTS' }
-      it { should contain '  root (hd0,0)' }
-      it { should contain %r{kernel /boot/vmlinuz-\S+generic ro root=UUID=} }
-      it { should contain ' selinux=0' }
-      it { should contain ' cgroup_enable=memory swapaccount=1' }
-      it { should contain %r{initrd /boot/initrd.img-\S+-generic} }
+      it { should contain "menuentry 'Ubuntu' --class ubuntu --class gnu-linux --class gnu --class os $menuentry_id_option 'gnulinux-simple-/dev/sda1' {" }
+      it { should contain %r{linux   /boot/vmlinuz-\S+-generic root=LABEL=cloudimg-rootfs ro   console=tty1 console=ttyS0} }
+      it { should contain %r{initrd  /boot/initrd.img-\S+-generic} }
+    end
+
+    describe file('/etc/default/grub') do
+      it { should be_file }
+      it { should contain 'GRUB_CMDLINE_LINUX="cgroup_enable=memory selinux=0"' }
     end
 
     describe file('/boot/grub/menu.lst') do

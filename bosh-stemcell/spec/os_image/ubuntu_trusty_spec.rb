@@ -11,6 +11,12 @@ describe 'Ubuntu 14.04 OS image', os_image: true do
     it { should_not be_installed }
   end
 
+  context 'installed by ubuntu_build_essential' do
+    describe package('build_essential') do
+      it { should be_installed }
+    end
+  end
+
   context 'installed by base_debootstrap' do
     %w(
       adduser
@@ -65,7 +71,6 @@ describe 'Ubuntu 14.04 OS image', os_image: true do
   context 'installed by base_apt' do
     %w(
       upstart
-      build-essential
       libssl-dev
       lsof
       strace
