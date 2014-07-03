@@ -68,12 +68,13 @@ module Bosh::Director
 
       attr_accessor :all_properties
 
-      # @param [Bosh::Director::DeploymentPlan::Planner]
-      #   deployment Deployment plan
+      # @param [Bosh::Director::DeploymentPlan::Planner] deployment Deployment plan
       # @param [Hash] job_spec Raw job spec from the deployment manifest
+      # @param [Bosh::Director::EventLog::Log] event_log Event log for recording deprecations
+      # @param [Logger] logger Log for director logging
       # @return [Bosh::Director::DeploymentPlan::Job]
-      def self.parse(deployment, job_spec, event_log)
-        parser = JobSpecParser.new(deployment, event_log)
+      def self.parse(deployment, job_spec, event_log, logger)
+        parser = JobSpecParser.new(deployment, event_log, logger)
         parser.parse(job_spec)
       end
 
@@ -234,9 +235,7 @@ module Bosh::Director
             unless reservation.reserved?
               network = @deployment.network(net_name)
               network.reserve!(reservation, "`#{name}/#{instance.index}'")
-              if instance.idle_vm
-                instance.idle_vm.use_reservation(reservation)
-              end
+              instance.vm.use_reservation(reservation) if instance.vm
             end
           end
         end

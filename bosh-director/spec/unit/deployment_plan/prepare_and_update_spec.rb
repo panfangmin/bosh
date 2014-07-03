@@ -2,6 +2,14 @@ require 'spec_helper'
 
 module Bosh::Director::DeploymentPlan
   describe 'deployment prepare & update' do
+    let(:redis) { double('Redis').as_null_object }
+    before { allow(Bosh::Director::Config).to receive(:redis).and_return(redis) }
+
+    let(:event_log) { Bosh::Director::Config.event_log }
+
+    before { allow(Bosh::Director::Config).to receive(:logger).and_return(logger) }
+    let(:logger) { Logger.new('/dev/null') }
+
     context 'the director database contains a VM with a static ip but no job instance assigned (due to deploy failure)' do
       before do
         release = Bosh::Director::Models::Release.make(name: 'fake-release')
@@ -12,15 +20,14 @@ module Bosh::Director::DeploymentPlan
         template = Bosh::Director::Models::Template.make(name: 'fake-template')
         release_version.add_template(template)
 
-        deployment.add_vm(vm)
+        deployment.add_vm(vm_model)
       end
 
       let(:deployment) { Bosh::Director::Models::Deployment.make(name: 'fake-deployment') }
-      let(:vm) { Bosh::Director::Models::Vm.make(deployment: deployment) }
+      let(:vm_model) { Bosh::Director::Models::Vm.make(deployment: deployment) }
       let(:stemcell) { Bosh::Director::Models::Stemcell.make(name: 'fake-stemcell', version: 'fake-stemcell-version') }
 
       context 'the agent on the existing VM has the requested static ip but no job instance assigned (due to deploy failure)' do
-
         before do
           allow(Bosh::Director::AgentClient).to receive(:with_defaults).and_return(agent_client)
           allow(agent_client).to receive(:apply)
@@ -28,6 +35,7 @@ module Bosh::Director::DeploymentPlan
           allow(agent_client).to receive(:stop)
           allow(agent_client).to receive(:wait_until_ready)
         end
+
         let(:agent_client) { instance_double('Bosh::Director::AgentClient') }
 
         before { allow(agent_client).to receive(:get_state).and_return(vm_state) }
@@ -133,18 +141,13 @@ module Bosh::Director::DeploymentPlan
           before { allow(Bosh::Director::App).to receive_message_chain(:instance, :blobstores, :blobstore).and_return(blobstore) }
           let(:blobstore) { instance_double('Bosh::Blobstore::Client') }
 
-          let(:event_log) { Bosh::Director::Config.event_log }
-
-          before { allow(Bosh::Director::Config).to receive(:logger).and_return(logger) }
-          let(:logger) { Logger.new('/dev/null') }
-
           before do
             allow(assembler).to receive(:bind_properties)
             allow(assembler).to receive(:bind_configuration)
           end
 
           it 'deletes the existing VM, and creates a new VM with the same IP' do
-            expect(cloud).to receive(:delete_vm).with(vm.cid).ordered
+            expect(cloud).to receive(:delete_vm).with(vm_model.cid).ordered
             expect(cloud).to receive(:create_vm).with(anything, stemcell.cid, anything, { 'fake-network' => hash_including('ip' => '127.0.0.1') }, anything, anything).ordered
 
             preparer.prepare

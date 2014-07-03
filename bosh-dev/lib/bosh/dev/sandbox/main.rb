@@ -156,6 +156,13 @@ module Bosh::Dev::Sandbox
       FileUtils.mkdir_p(cloud_storage_dir)
       FileUtils.rm_rf(logs_path)
       FileUtils.mkdir_p(logs_path)
+
+      @database.create_db
+      @database_created = true
+      @database_migrator.migrate
+
+      reconfigure_director
+      @worker_processes.each(&:start)
     end
 
     def reset(name)
@@ -165,8 +172,25 @@ module Bosh::Dev::Sandbox
 
     def reconfigure_director
       @director_process.stop
+
       write_in_sandbox(DIRECTOR_CONFIG, load_config_template(DIRECTOR_CONF_TEMPLATE))
+
+      FileUtils.rm_rf(director_tmp_path)
+      FileUtils.mkdir_p(director_tmp_path)
+      File.open(File.join(director_tmp_path, 'state.json'), 'w') do |f|
+        f.write(Yajl::Encoder.encode('uuid' => DIRECTOR_UUID))
+      end
+
       @director_process.start
+
+      begin
+        # CI does not have enough time to start bosh-director
+        # for some parallel tests; increasing to 60 secs (= 300 tries).
+        @director_socket_connector.try_to_connect(300)
+      rescue
+        output_service_log(@director_process)
+        raise
+      end
     end
 
     def reconfigure_workers
@@ -257,41 +281,17 @@ module Bosh::Dev::Sandbox
 
     def do_reset(name)
       @cpi.kill_agents
-      @worker_processes.each(&:stop)
-      @director_process.stop
-      @health_monitor_process.stop
 
       Redis.new(host: 'localhost', port: redis_port).flushdb
 
-      @database.drop_db if @database_created
-      @database_created = true
-
-      @database.create_db
-      @database_migrator.migrate
+      @database.truncate_db
 
       FileUtils.rm_rf(blobstore_storage_dir)
       FileUtils.mkdir_p(blobstore_storage_dir)
       FileUtils.rm_rf(director_tmp_path)
       FileUtils.mkdir_p(director_tmp_path)
 
-      File.open(File.join(director_tmp_path, 'state.json'), 'w') do |f|
-        f.write(Yajl::Encoder.encode('uuid' => DIRECTOR_UUID))
-      end
-
-      write_in_sandbox(DIRECTOR_CONFIG, load_config_template(DIRECTOR_CONF_TEMPLATE))
-      write_in_sandbox(HM_CONFIG, load_config_template(HM_CONF_TEMPLATE))
-
-      @director_process.start
-      @worker_processes.each(&:start)
-
-      begin
-        # CI does not have enough time to start bosh-director
-        # for some parallel tests; increasing to 60 secs (= 300 tries).
-        @director_socket_connector.try_to_connect(300)
-      rescue
-        output_service_log(@director_process)
-        raise
-      end
+      reconfigure_director if director_configuration_changed?
     end
 
     def setup_sandbox_root
@@ -302,6 +302,16 @@ module Bosh::Dev::Sandbox
       FileUtils.chmod(0755, sandbox_path(EXTERNAL_CPI))
       FileUtils.mkdir_p(sandbox_path('redis'))
       FileUtils.mkdir_p(blobstore_storage_dir)
+    end
+
+    def director_configuration_changed?
+      read_from_sandbox(DIRECTOR_CONFIG) != load_config_template(DIRECTOR_CONF_TEMPLATE)
+    end
+
+    def read_from_sandbox(filename)
+      Dir.chdir(sandbox_root) do
+        File.read(filename)
+      end
     end
 
     def write_in_sandbox(filename, contents)
